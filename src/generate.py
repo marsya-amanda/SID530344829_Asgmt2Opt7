@@ -1,4 +1,8 @@
 import numpy as np, torch
+from pathlib import Path
+import sys
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 from foley.constants import * # type: ignore
 from foley import audio, descriptors # type: ignore
 from foley.model import UNet # type: ignore
