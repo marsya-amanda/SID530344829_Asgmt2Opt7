@@ -1,0 +1,24 @@
+# Deviations and verification log
+
+- Audit: the scaffold contains the requested module names but several files are skeletal or contain TODO/ellipsis placeholders; implementation follows `docs/specs/PLAN.md` and the assignment brief.
+- Audit: `configs/` in the plan is named `config/` in the scaffold; existing paths are retained for compatibility and documented here.
+- Audit: the checked-in WAV dataset is present locally, but no training or evaluation run is performed against it; CPU verification uses synthetic data.
+- Audit: `eval/` is not read by training code. The only permitted real-eval readers will be `scripts/precompute_features.py` and `scripts/evaluate.py`.
+- Fix: U-Net skip bookkeeping is validated with explicit spatial/channel alignment checks for the default and smoke configurations in `src/model.py`.
+- Fix: inference resolves `src/` relative to `infer.py`, and enables deterministic cuDNN settings without enabling them accidentally.
+- Fix: training supports CPU/automatic/CUDA devices, resume, bounded smoke runs, atomic `last.pt`, and EMA checkpoints.
+- Fix: CFG uses conditional-first/unconditional-second ordering and duplicates controls consistently; the unconditional branch uses class 7 and zero masks.
+- Fix: validation diffusion RNG is created on the data device.
+- Fix: validation/control datasets never apply shift augmentation; descriptor mappings are shared by training and inference.
+- Fix: generation creates each sample's noise from an independent CPU generator before moving the batch to the target device.
+- Fix: checkpoint generation defaults are plain metadata and can be rewritten without changing model tensors.
+- Needs verification on real data: folder variants, cache sizes, classifier quality, checkpoint selection, generated audio quality, and descriptor thresholds.
+- Needs verification on Colab T4: CUDA fp16 autocast/GradScaler throughput and numerical stability, 50k-step training, resume after disconnect, and final report metrics.
+- Performance fix: classifier now defaults to GPU preload when CUDA is selected/available; normalised train and validation caches are stored as fp16 tensors on GPU and batches are indexed there. This removes DataLoader host copies and per-batch CPU augmentation; `--no-preload` preserves the DataLoader path. File: `scripts/train_classifier.py`.
+- Performance instrumentation: classifier `--profile` reports device placement, first-batch production, interval time, and peak CUDA memory only when enabled. File: `scripts/train_classifier.py`.
+- Performance fix: core diffusion training now optionally preloads train/validation mels on CUDA by default when `use_controls: false` and no shift augmentation; control/shift fine-tuning retains the DataLoader path. File: `scripts/train.py`, `src/foley/data.py`.
+- Test: added deterministic preloaded-batch coverage for shapes, float32 batch conversion, complete epoch coverage, and fixed-seed ordering. File: `tests/test_all.py`.
+- Bug fix: GPU-preloaded validation labels remained on CUDA while predictions were copied to CPU, causing device-mismatch during accuracy calculation. Accuracy now compares predictions and labels on the selected device. File: `scripts/train_classifier.py`.
+- Bug fix: core training referenced the removed `args.no_preload` attribute after adding the tri-state `args.preload_gpu` option. The explicit `--no-preload` case now checks `args.preload_gpu is False`. File: `scripts/train.py`.
+- T4 memory fix: the default core batch was 32, but the 16.4M-parameter U-Net's 1,760-token attention exceeded available VRAM during a batch-32 forward pass; the core default is now batch 8 and workers 2. Unused DataLoaders are no longer constructed in GPU-preload mode. Files: `config/core.yaml`, `scripts/train.py`.
+- Training warning fix: AMP can skip an optimizer update after non-finite gradients, so the scheduler and EMA now advance only when `GradScaler.step()` actually updates the optimizer; loss logging uses `detach().item()` to avoid autograd scalar-conversion warnings. File: `scripts/train.py`.

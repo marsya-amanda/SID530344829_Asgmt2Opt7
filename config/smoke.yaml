@@ -1,0 +1,7 @@
+data: {root: /path/to/data, cache: cache, val_frac: 0.1, split_seed: 42}
+model: {base: 16, mults: [1, 2, 4], n_res: 1, cond_dim: 64, attn_levels: [2], use_controls: false}
+diffusion: {T: 1000, beta_start: 1.0e-4, beta_end: 0.02}
+train: {batch: 2, lr: 2.0e-4, warmup: 5, steps: 20, p_uncond: 0.1, ema: 0.999,
+        ckpt_every: 10, val_every: 10, seed: 0, workers: 0, init_from: null,
+        ctrl_mask_p: 0.5, shift_prob: 0.0}
+gen_defaults: {w: 3.0, steps: 5}

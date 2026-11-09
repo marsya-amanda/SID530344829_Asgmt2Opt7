@@ -1,0 +1,10 @@
+torch>=2.1
+numpy
+scipy
+librosa>=0.10
+soundfile
+scikit-learn
+matplotlib
+pyyaml
+tqdm
+pytest
