@@ -2,8 +2,12 @@ import json, numpy as np, torch
 from pathlib import Path
 from sklearn.model_selection import train_test_split
 from torch.utils.data import Dataset
-from foley.constants import *
-from foley import audio, descriptors
+from pathlib import Path
+import sys
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from foley.constants import * # type: ignore
+from foley import audio, descriptors # type: ignore
 
 def list_clips(split_root: Path) -> list[tuple[str, int]]:
     """Recursively list WAVs below class folders as ``(relative_path,class_id)``."""

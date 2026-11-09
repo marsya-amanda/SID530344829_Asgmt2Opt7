@@ -1,7 +1,11 @@
 import numpy as np
 from scipy.signal import find_peaks
 from scipy.ndimage import uniform_filter1d
-from foley.constants import *
+from pathlib import Path
+import sys
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from foley.constants import * # type: ignore
 
 BRIGHT, ONSET, DENS = 0, 1, 2
 TRANSIENT = {0, 1, 2, 3}          # DogBark, Footstep, GunShot, Keyboard (event-like; cf. [CLN24]'s transient vs ambient split)

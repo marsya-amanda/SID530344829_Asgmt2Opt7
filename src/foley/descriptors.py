@@ -1,2 +1,2 @@
 """Compatibility module exposing descriptor functions."""
-from descriptors import *
+from descriptors import * # type: ignore

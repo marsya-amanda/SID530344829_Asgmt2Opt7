@@ -1,7 +1,11 @@
 import numpy as np
 import soundfile as sf
 import torch
-from foley.constants import N_CLASSES, N_MELS, N_SAMPLES, SR, T_PAD
+from pathlib import Path
+import sys
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from foley.constants import N_CLASSES, N_MELS, N_SAMPLES, SR, T_PAD # type: ignore
 
 
 def check_wav_format(path) -> dict:

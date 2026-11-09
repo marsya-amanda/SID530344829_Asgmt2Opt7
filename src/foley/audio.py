@@ -1,5 +1,5 @@
 import numpy as np, librosa, soundfile as sf
-from .constants import *
+from .constants import * # type: ignore
 
 def load_wav(path) -> np.ndarray:
     """Load, resample, mono-mix, and crop/pad a WAV to ``(88200,)`` float32."""

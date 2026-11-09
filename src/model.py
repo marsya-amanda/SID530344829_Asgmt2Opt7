@@ -1,5 +1,9 @@
 import math, torch, torch.nn as nn, torch.nn.functional as F
-from foley.constants import N_CLASSES, NULL_ID
+from pathlib import Path
+import sys
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from foley.constants import N_CLASSES, NULL_ID # type: ignore
 
 def sinusoidal(t, dim):                              # t: (B,) float
     half = dim // 2

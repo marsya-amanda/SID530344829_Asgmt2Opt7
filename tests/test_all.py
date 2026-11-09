@@ -1,9 +1,28 @@
-import subprocess, sys, numpy as np, soundfile as sf, pytest
+import subprocess, sys
+from pathlib import Path
+
+import numpy as np
+import pytest
+import soundfile as sf
 import torch
-from scripts.train_classifier import preloaded_batches
-W = "weights/core.pt"
-def run(cid, seed, out): subprocess.run([sys.executable, "infer.py", "--weights", W, "--class-id", str(cid),
-                                         "--seed", str(seed), "--out", str(out)], check=True)
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
+from scripts.train_classifier import preloaded_batches # type: ignore
+
+W = ROOT / "weights/core.pt"
+
+
+def run(cid, seed, out):
+    subprocess.run(
+        [sys.executable, str(ROOT / "infer.py"), "--weights", str(W), "--class-id", str(cid),
+         "--seed", str(seed), "--out", str(out)],
+        check=True,
+        cwd=ROOT,
+    )
+
+
 @pytest.mark.parametrize("cid", range(7))
 def test_format(tmp_path, cid):
     o = tmp_path / "a.wav"; run(cid, 0, o); y, sr = sf.read(o); i = sf.info(o)

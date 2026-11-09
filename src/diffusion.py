@@ -1,5 +1,7 @@
 import torch, torch.nn.functional as F
-from foley.constants import NULL_ID
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from foley.constants import NULL_ID # type: ignore
 
 class Diffusion:
     """Linear-schedule epsilon diffusion with deterministic DDIM sampling."""

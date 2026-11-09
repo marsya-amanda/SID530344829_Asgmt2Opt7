@@ -1,8 +1,8 @@
 import numpy as np, torch
-from foley.constants import *
-from foley import audio, descriptors
-from foley.model import UNet
-from foley.diffusion import Diffusion
+from foley.constants import * # type: ignore
+from foley import audio, descriptors # type: ignore
+from foley.model import UNet # type: ignore
+from foley.diffusion import Diffusion # type: ignore
 
 def load_ckpt(path, device):
     """Load a tensor-only checkpoint and construct model and diffusion objects."""

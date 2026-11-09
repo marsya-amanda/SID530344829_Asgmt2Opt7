@@ -6,8 +6,8 @@ import torch
 from sklearn.model_selection import train_test_split
 from torch.utils.data import Dataset
 
-from . import audio, descriptors
-from .constants import N_CLASSES, folder_to_id
+from . import audio, descriptors # type: ignore
+from .constants import N_CLASSES, folder_to_id # type: ignore
 
 
 def list_clips(split_root: Path) -> list[tuple[str, int]]:
