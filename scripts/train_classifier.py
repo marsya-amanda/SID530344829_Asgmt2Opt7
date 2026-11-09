@@ -12,8 +12,8 @@ from torch.utils.data import DataLoader, TensorDataset
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
-from foley.classifier import SmallCNN
-from foley.audio import normalise
+from foley.classifier import SmallCNN  # type: ignore[reportMissingImports]
+from foley.audio import normalise  # type: ignore[reportMissingImports]
 
 LOGGER = logging.getLogger("foley.classifier")
 
