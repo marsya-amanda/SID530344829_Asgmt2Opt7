@@ -43,7 +43,7 @@ def logmel_to_wav(lm: np.ndarray, seed: int, n_iter: int = 60) -> np.ndarray:
     S = librosa.feature.inverse.mel_to_stft(np.exp(lm), sr=SR, n_fft=N_FFT, power=1.0,
                                             fmin=FMIN, fmax=FMAX)
     y = librosa.griffinlim(S, n_iter=n_iter, hop_length=HOP, win_length=N_FFT, n_fft=N_FFT,
-                           length=N_SAMPLES, random_state=seed)       # seeded => reproducible
+                           length=N_SAMPLES, rng=seed)       # seeded => reproducible
     return (0.9 * y / (np.abs(y).max() + 1e-8)).astype(np.float32)
 
 def save_wav(path, y, subtype="PCM_16"):
