@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <meta name="author" content="Marsya A." />
+  <title>Intelligent Foley Sound Effect Generation</title>
+  <style>
+    /* Default styles provided by pandoc.
+    ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+    */
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+      text-align:justify
+
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #1a1a1a;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">Intelligent Foley Sound Effect Generation</h1>
+<p class="author">Marsya A.</p>
+</header>
+<p><span class="lettrine"><span><span
+class="sans-serif">F</span></span></span><span
+class="smallcaps"></span><strong>oley sounds are human-made sound
+effects that enhance the viewing experience of visual media [1]. The
+DCASE 2023 Task 7 challenge was organised to promote research on
+synthesising them with generative models, and its submissions showed
+promising results [1]. Chung et al. later introduced T-Foley, which
+generates Foley sound synchronised to temporal events [2]. This project
+tackles the basic task at small scale: given a class ID (seven
+categories) and a random seed, generate a four-second, 22,050 Hz mono
+sound that fits the class, changes with the seed and does not copy a
+training clip, with a model light enough for one GPU.<br />
+<br />
+A class-conditional diffusion model is trained on 80 × 345 log-mel
+spectrograms [3] of the DCASE 2023 development data. A 2-D U-Net [4]
+with 16.432 M parameters, conditioned on the class and diffusion step
+through FiLM layers [5], predicts the added noise. Sounds are sampled
+with 50-step DDIM [6] and classifier-free guidance [7], and waveforms
+are reconstructed by a seeded Griffin-Lim algorithm [8]. Training took
+roughly 9–10 hours on one Colab T4 GPU, without pretrained models. Plain
+conditional sampling (baseline, guidance scale
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>w</mi><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">w=1</annotation></semantics></math>)
+is compared with guided sampling (modification,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>w</mi><mo>=</mo><mn>3</mn></mrow><annotation encoding="application/x-tex">w=3</annotation></semantics></math>)
+on the same weights and seeds.<br />
+<br />
+Evaluation is subjective and uses the three criteria of the DCASE 2023
+challenge [1]: perceptual audio quality, fit-to-category and diversity,
+judged by listening to the submitted demonstration files.
+Fit-to-category is moderate-high and diversity across seeds is high, but
+audio quality is poor: sounds are often metallic and buzzy. Griffin-Lim
+phase reconstruction is the suspected cause, although no ablation with a
+neural vocoder was run. Comparisons of the baseline to guided sampling
+showed improvement in diversity and fit, but not audio
+quality.</strong></p>
+<h1 class="unnumbered" id="literature-review">Literature Review</h1>
+<h2 class="unnumbered" id="diffwave">DiffWave</h2>
+<p>DiffWave is a non-autoregressive diffusion model that converts white
+noise into a waveform through a Markov chain with a fixed number of
+steps. A single noise-prediction loss trains it without a discriminator,
+and it handles mel-conditioned vocoding, class-conditional and
+unconditional generation [9]. Its 2.64 M-parameter dilated-convolution
+network outperformed autoregressive and GAN-based waveform models;
+class-conditionally it reached 91.2% classifier accuracy against 56.2%
+and 60.7% for two WaveNet variants, with labels added as an embedding
+bias in each residual layer [9]. Training needed 1 M steps on eight
+GPUs, and the authors note that spectrograms are easier to generate than
+waveforms because they are far shorter [9]. This project adopts the
+noise-prediction objective, linear noise schedule, label-embedding idea,
+mel settings (FFT 1024, hop 256, window 1024) and learning rate
+(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>2</mn><mo>×</mo><msup><mn>10</mn><mrow><mi>−</mi><mn>4</mn></mrow></msup></mrow><annotation encoding="application/x-tex">2\times10^{-4}</annotation></semantics></math>),
+but not waveform-domain modelling, which is too costly for 88,200
+samples per clip on one GPU.</p>
+<h2 class="unnumbered" id="t-foley">T-Foley</h2>
+<p>T-Foley is a waveform-domain diffusion model conditioned on the sound
+class and a frame-wise RMS event feature injected by Block-FiLM, and it
+produces Foley sound well synchronised with the target events [2]. It is
+trained on the same DCASE 2023 dataset (95%/5% split, 500 epochs), with
+conditions dropped with probability 0.1 to enable classifier-free
+guidance; its best variant has 74 M parameters [2]. The authors separate
+transient, event-based sounds from continuous ones, noting that rain and
+sneeze lack definite onsets [2]. This project takes the dataset framing,
+FiLM conditioning on class and timestep, 10% condition dropout with
+guidance, and the transient/continuous distinction (used to pick the
+class for the seed comparison). It omits temporal conditioning, the
+waveform-domain network (about 4.5 times larger) and the FAD and
+23-listener evaluation.</p>
+<h2 class="unnumbered"
+id="foley-sound-synthesis-aththe-dcase-2023-challenge">Foley Sound
+Synthesis aththe DCASE 2023 Challenge</h2>
+<p>The challenge report defines three subjective criteria: perceptual
+audio quality (clarity, free from artefacts, fuzziness, degradation,
+distortion and noise), fit-to-category (the degree to which a sound is
+recognised as the intended category) and diversity (the ability to
+produce a diverse set of sounds). Objective evaluation uses the Fréchet
+Audio Distance (FAD, lower is better) [1]. The two did not align
+completely, but in aggregate low-FAD systems tended to score well on all
+three subjective criteria [1]. The best-performing systems used a
+sequence of diffusion models for spectrogram generation and HiFi-GAN for
+phase reconstruction [1]. This project adopts the three criteria as its
+listening vocabulary and the result as evidence that spectrogram
+diffusion suits this dataset, but not HiFi-GAN (an extra training stage)
+or FAD.</p>
+<h2 class="unnumbered" id="supporting-evidence-for-guidance">Supporting
+evidence for guidance</h2>
+<p>FiLM applies a per-channel scale and shift predicted from a
+conditioning input [5] and conditions the U-Nets of T-Foley and AudioLDM
+[2], [10]. AudioLDM shows that latent diffusion on a compressed
+mel-spectrogram representation plus a HiFi-GAN vocoder can be trained on
+one GPU; its DDIM quality improves with step count and flattens near 100
+steps (FD 35.71 at 50, 29.48 at 200), and guidance scale 3 gave its best
+FD and KL, with guidance trading quality against diversity [10].
+Diffsound also generates mel-spectrogram tokens with discrete diffusion
+and a separate vocoder, with better MOS than an autoregressive decoder
+(3.56 vs 2.786) and about five times faster generation [11]. These
+results motivate 50 DDIM steps, a guidance scale near 3 and the
+baseline-versus-guidance comparison.</p>
+<h2 class="unnumbered" id="review-conclusion">Review conclusion</h2>
+<p>Three decisions follow. Diffusion is applied to spectrograms, not
+waveforms, for compute reasons [9] and because it performed well in the
+challenge [1]. Griffin-Lim replaces a trained neural vocoder, a further
+sequential training stage that one GPU and four days rule out, at an
+expected cost in audio quality. FAD is not computed, because it relies
+on pretrained audio classifiers such as VGGish or PANNs [2]; listening
+replaces it.</p>
+<h1 class="unnumbered" id="method">Method</h1>
+<h2 class="unnumbered" id="overview">Overview</h2>
+<p>Figure 1 shows the pipeline. Training learns to predict the noise
+added to normalised log-mel spectrograms of the training clips;
+inference denoises seeded noise into a spectrogram and converts it to a
+four-second waveform.</p>
+<figure id="Figure 1">
+<img src="./fig_pipeline.png" style="width:100.0%" />
+<figcaption>Training and inference pipeline. Training (top) learns noise
+prediction on normalised log-mel spectrograms; inference (bottom) turns
+a class ID and seed into a WAV file.</figcaption>
+</figure>
+<h2 class="unnumbered" id="audio-representation">Audio
+representation</h2>
+<p>Audio is mono, 22,050 Hz and padded or cropped to 88,200 samples. A
+mel spectrogram is the short-time Fourier transform magnitude projected
+onto a mel filterbank, whose bands follow the ear’s roughly logarithmic
+frequency resolution and reduce 513 linear bins to 80. A log-mel
+spectrogram also takes the logarithm of those magnitudes. Magnitudes
+span several orders of magnitude, with most energy in a few loud bins;
+the logarithm compresses them into a bounded range closer to perceived
+loudness, which suits a diffusion model that adds Gaussian noise at a
+fixed scale (a design rationale, not tested here). Magnitude compression
+was also the one preprocessing step found not to be redundant for deep
+networks in [3]. Natural-log magnitudes
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mi mathvariant="normal">log</mi><mo>&#8289;</mo></mrow><mrow><mi mathvariant="normal">max</mi><mo>&#8289;</mo></mrow><mo stretchy="false" form="prefix">(</mo><mi>M</mi><mo>,</mo><msup><mn>10</mn><mrow><mi>−</mi><mn>5</mn></mrow></msup><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\log\max(M,10^{-5})</annotation></semantics></math>
+are used, with FFT and window 1024, hop 256, 80 bands and an upper
+frequency of 11,025 Hz, giving 80 × 345 frames. Values are clipped to
+the 0.1st–99.9th percentile of the training log-mels, scaled to
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">[</mo><mi>−</mi><mn>1</mn><mo>,</mo><mn>1</mn><mo stretchy="false" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">[-1,1]</annotation></semantics></math>
+and padded with
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>−</mi><mn>1</mn></mrow><annotation encoding="application/x-tex">-1</annotation></semantics></math>
+to 352 frames so that three downsampling steps divide evenly.</p>
+<p>To return to audio, a sample is denormalised, cropped to 345 frames,
+exponentiated and mapped to linear frequency with the pseudo-inverse of
+the mel filterbank in librosa [12]. Griffin-Lim [8] then estimates the
+missing phase over 60 seeded iterations. The result is trimmed to 88,200
+samples and peak-normalised to 0.9, so absolute loudness differences
+between clips are not preserved.</p>
+<h2 class="unnumbered" id="model-architecture">Model architecture</h2>
+<p>The network treats the spectrogram as a one-channel image and is a
+2-D U-Net [4] (Figure 2) with three levels of 64, 128 and 256 channels
+at 80 × 352, 40 × 176 and 20 × 88 resolution. The encoder has two
+residual blocks per level with stride-2 convolutions; the decoder has
+three per level (the extra block consumes a skip connection) and
+upsamples by nearest-neighbour interpolation and a convolution. Each
+block applies GroupNorm, SiLU and a 3 × 3 convolution, then GroupNorm,
+FiLM modulation [5], SiLU and a second convolution, plus a residual
+connection. Self-attention is used only at the lowest resolution and in
+the middle block (1,760 positions). The conditioning vector, an MLP of
+the sinusoidal timestep embedding plus a learned class embedding (256-d;
+seven classes and a NULL entry), is mapped by a linear layer in each
+block to the FiLM scale and shift.</p>
+<figure id="Figure 2">
+<img src="./fig_architecture.png" style="width:100.0%" />
+<figcaption>U-Net architecture. (a) Layout with skip connections; (b)
+conditioning vector and residual block. Counts are blocks per
+level.</figcaption>
+</figure>
+<h2 class="unnumbered" id="training-objective">Training objective</h2>
+<p>Forward diffusion corrupts a spectrogram
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>x</mi><mn>0</mn></msub><annotation encoding="application/x-tex">x_0</annotation></semantics></math>
+over
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>=</mo><mn>1000</mn></mrow><annotation encoding="application/x-tex">T=1000</annotation></semantics></math>
+steps with a linear noise schedule from
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mn>10</mn><mrow><mi>−</mi><mn>4</mn></mrow></msup><annotation encoding="application/x-tex">10^{-4}</annotation></semantics></math>
+to
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.02</mn><annotation encoding="application/x-tex">0.02</annotation></semantics></math>
+[9]. The U-Net is trained to predict the added noise
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>ϵ</mi><annotation encoding="application/x-tex">\epsilon</annotation></semantics></math>
+with the unweighted mean squared error</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi mathvariant="script">ℒ</mi><mo>=</mo><msub><mi mathvariant="double-struck">𝔼</mi><mrow><msub><mi>x</mi><mn>0</mn></msub><mo>,</mo><mi>ϵ</mi><mo>,</mo><mi>t</mi></mrow></msub><msup><mrow><mo stretchy="true" form="prefix">∥</mo><mi>ϵ</mi><mo>−</mo><msub><mi>ϵ</mi><mi>θ</mi></msub><mspace width="-0.167em"></mspace><mrow><mo stretchy="true" form="prefix">(</mo><msqrt><msub><mover><mi>α</mi><mo accent="true">‾</mo></mover><mi>t</mi></msub></msqrt><mspace width="0.167em"></mspace><msub><mi>x</mi><mn>0</mn></msub><mo>+</mo><msqrt><mrow><mn>1</mn><mo>−</mo><msub><mover><mi>α</mi><mo accent="true">‾</mo></mover><mi>t</mi></msub></mrow></msqrt><mspace width="0.167em"></mspace><mi>ϵ</mi><mo>,</mo><mspace width="0.278em"></mspace><mi>t</mi><mo>,</mo><mspace width="0.278em"></mspace><mi>y</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="true" form="postfix">∥</mo></mrow><mn>2</mn></msup><mi>.</mi></mrow><annotation encoding="application/x-tex">\mathcal{L}=\mathbb{E}_{x_0,\epsilon,t}\left\|\epsilon-\epsilon_\theta\!\left(\sqrt{\bar\alpha_t}\,x_0+\sqrt{1-\bar\alpha_t}\,\epsilon,\;t,\;y\right)\right\|^2 .</annotation></semantics></math></p>
+<p>During training the class
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>y</mi><annotation encoding="application/x-tex">y</annotation></semantics></math>
+is replaced by the NULL entry with probability 0.1, so one network
+learns both conditional and unconditional prediction [2]. An exponential
+moving average of the weights is kept and used for sampling.</p>
+<h2 class="unnumbered" id="inference-process">Inference process</h2>
+<p>A CPU random generator seeded with the requested seed gives the
+initial noise
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>x</mi><mi>T</mi></msub><mo>∼</mo><mi>N</mi><mo stretchy="false" form="prefix">(</mo><mn>0</mn><mo>,</mo><mi>I</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">x_T\sim N(0,I)</annotation></semantics></math>
+of size 80 × 352, identical on any device. Sampling uses 50
+deterministic DDIM steps
+(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>η</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\eta=0</annotation></semantics></math>)
+[6], clamping the predicted
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>x</mi><mn>0</mn></msub><annotation encoding="application/x-tex">x_0</annotation></semantics></math>
+to
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">[</mo><mi>−</mi><mn>1</mn><mo>,</mo><mn>1</mn><mo stretchy="false" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">[-1,1]</annotation></semantics></math>.
+Classifier-free guidance [7] combines the conditional and NULL-class
+predictions as
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>ϵ</mi><mo accent="true">̂</mo></mover><mo>=</mo><msub><mi>ϵ</mi><mi>u</mi></msub><mo>+</mo><mi>w</mi><mo stretchy="false" form="prefix">(</mo><msub><mi>ϵ</mi><mi>c</mi></msub><mo>−</mo><msub><mi>ϵ</mi><mi>u</mi></msub><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\hat\epsilon=\epsilon_u+w(\epsilon_c-\epsilon_u)</annotation></semantics></math>,
+computed in one batched pass;
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>w</mi><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">w=1</annotation></semantics></math>
+reduces to a single conditional pass. The spectrogram is converted to
+audio as in Section 3.2, with Griffin-Lim seeded by the same seed. With
+32-bit inference and deterministic cuDNN settings, the same weights,
+class, seed and device reproduce the same WAV file.</p>
+<h2 class="unnumbered"
+id="reference-method-and-authors-modification">Reference method and
+author’s modification</h2>
+<p>The baseline B0 is plain conditional sampling
+(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>w</mi><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">w=1</annotation></semantics></math>);
+the modification M1 is classifier-free guidance with
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>w</mi><mo>=</mo><mn>3</mn></mrow><annotation encoding="application/x-tex">w=3</annotation></semantics></math>.
+Both use the same checkpoint, seeds, DDIM steps, Griffin-Lim
+reconstruction and listening protocol; the condition dropout is part of
+training, so the modification is inference-time only. Three expectations
+were set before listening. H1: guidance improves fit-to-category. H2:
+guidance reduces diversity and may add artefacts. H3: neither setting
+reproduces a training clip. They are motivated by the quality–diversity
+trade-off and the best scale near 3 reported for AudioLDM [10].</p>
+<h2 class="unnumbered"
+id="compute-budget-and-external-resources">Compute budget and external
+resources</h2>
+<p>The design target was a model that trains on one free-tier Google
+Colab NVIDIA T4 (16 GB) with fp16 mixed precision; the 16.432
+M-parameter U-Net needs about 66 MB as fp32 weights. The planned batch
+of 32 exceeded T4 memory because of attention over 1,760 positions, so
+batch 8 was used, with peak GPU memory of about 14.3 GB (read from the
+Colab session, not logged). Generating a clip costs 50 U-Net passes (100
+with guidance, batched in pairs) plus Griffin-Lim. Software is PyTorch
+[13], NumPy [14], SciPy [15], librosa [12] (mel filterbank, inverse mel,
+Griffin-Lim) and scikit-learn [16] (stratified split only), plus
+soundfile, matplotlib, PyYAML, tqdm and pytest. The only data are the
+DCASE 2023 Task 7 clips [1]; no pretrained weights, external audio or
+off-the-shelf generators were used.</p>
+<h1 class="unnumbered" id="experimental-setup">Experimental setup</h1>
+<h2 class="unnumbered" id="dataset-and-split">Dataset and split</h2>
+<p>The DCASE 2023 Task 7 dataset [1] has seven classes (0 DogBark, 1
+Footstep, 2 GunShot, 3 Keyboard, 4 MovingMotorVehicle, 5 Rain, 6
+Sneeze/Cough) and 4,850 development and 700 evaluation clips, each four
+seconds, mono, 16-bit and 22,050 Hz. Folder names such as
+<code>dog_bark</code> map to IDs through a lookup that ignores case and
+underscores. The development set was split 90/10, stratified by class,
+with random seed 42: 4,365 training and 485 validation clips, listed in
+<code>splits/</code>. The evaluation folder was not used for training or
+checkpoint selection.</p>
+<h2 class="unnumbered" id="pre-processing">Pre-processing</h2>
+<p>Preprocessing follows Section 3.2, with log-mels cached once as
+16-bit floats; percentile limits come from training clips only
+(low=<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>−</mi><mn>11.513</mn></mrow><annotation encoding="application/x-tex">-11.513</annotation></semantics></math>,
+high=<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.355</mn><annotation encoding="application/x-tex">0.355</annotation></semantics></math>).</p>
+<h2 class="unnumbered" id="hyperparameters">Hyperparameters</h2>
+<p>Table 2 lists the settings. The learning rate follows DiffWave [9];
+warm-up, gradient clipping and averaging decay are common stabilisers,
+not tuned.</p>
+<h2 class="unnumbered" id="training-time-and-hardware">Training time and
+hardware</h2>
+<p>Evaluation is by listening only; no computed audio metric is
+reported. Output format is checked from each file’s header (length,
+sampling rate, channels, bit depth) and level produced by running
+<code>infer.py</code>. Quality, fit and diversity are judged on the
+DCASE 2023 criteria [1] by one unblinded listener (the author) on a
+three-point scale, using headphones and speakers. Listening
+materials.</p>
+<h1 class="unnumbered" id="results-and-discussion">Results and
+Discussion</h1>
+<h2 class="unnumbered" id="model-selection-and-sanity">Model selection
+and sanity</h2>
+<p>The submitted model is the averaged-weights checkpoint at the final
+step (40,000); the selection script takes the last saved checkpoint, so
+none were compared. The validation split only monitored the training
+loss, with the final validation loss at
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.01499</mn><annotation encoding="application/x-tex">0.01499</annotation></semantics></math>.
+All nine demonstration files are 88,200 samples long, mono, 22,050 Hz,
+16-bit PCM and non-silent. Running <code>infer.py</code> twice with the
+same weights, class and seed gave identical audio; a different seed gave
+a different sound.</p>
+<h2 class="unnumbered" id="demonstration-generated-files">Demonstration:
+Generated files</h2>
+<p>The folder <code>demo_wavs/</code> holds exactly nine files,
+generated with
+<code>python infer.py --weights weights/core.pt --class-id ID --seed SEED --out demo_wavs/class_ID_seed_SEED.wav</code>
+(defaults
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>w</mi><mo>=</mo><mn>3</mn></mrow><annotation encoding="application/x-tex">w=3</annotation></semantics></math>,
+50 steps): <code>class_0_seed_0.wav</code> (DogBark),
+<code>class_1_seed_0.wav</code> (Footstep),
+<code>class_2_seed_0.wav</code> (GunShot),
+<code>class_3_seed_0.wav</code> (Keyboard),
+<code>class_4_seed_0.wav</code> (MovingMotorVehicle),
+<code>class_5_seed_0.wav</code> (Rain) and
+<code>class_6_seed_0.wav</code> (Sneeze/Cough), plus two further DogBark
+and Footstep seeds. Seeds were fixed in advance, not chosen after
+listening, so failures are not hidden. Figure 3 shows their
+spectrograms, computed from the files themselves and so including any
+Griffin-Lim artefacts.</p>
+<div style="display: flex; flex-direction: row; gap:5">
+  <figure id="Figure 3">
+  <img src="./Untitled Design (1).png" style="width:100.0%" />
+  <figcaption>Mel spectrograms of the seven demonstration files of each
+  class, seed 0 (time 0–4 s, 0–11,025 Hz).</figcaption>
+  </figure>
+
+  <div id="audios" width="0.2">
+  <audio controls> <source src="demo_wavs/class_0_seed_0.wav" type="audio/wav"></audio>
+  <audio controls> <source src="demo_wavs/class_1_seed_0.wav" type="audio/wav"></audio>
+  <audio controls> <source src="demo_wavs/class_2_seed_0.wav" type="audio/wav"></audio>
+  <audio controls> <source src="demo_wavs/class_3_seed_0.wav" type="audio/wav"></audio>
+  <audio controls> <source src="demo_wavs/class_4_seed_0.wav" type="audio/wav"></audio>
+  <audio controls> <source src="demo_wavs/class_5_seed_0.wav" type="audio/wav"></audio>
+  <audio controls> <source src="demo_wavs/class_6_seed_0.wav" type="audio/wav"></audio>
+  </div>
+</div>
+
+<h2 class="unnumbered" id="category-fit">Category fit</h2>
+<p>Table 3 records whether each demonstration sound matches its
+requested class (1 = unrecognisable, 3 = unmistakable). Overall,
+fit-to-category is moderate-high (score=2.3). with Sneeze/Cough having
+the weakest fit-to-category. DogBark, Footstep, Keyboard fit better than
+GunShot, MovingMotorVehicle, Rain and Sneeze/Cough.</p>
+<h2 class="unnumbered" id="diversity-across-seeds">Diversity across
+seeds</h2>
+<p>The files <code>class_1_seed_0.wav</code>,
+<code>class_1_seed_1.wav</code> and <code>class_1_seed_2.wav</code>
+compare three seeds of the chosen class, Footstep. Seed 0 has variable
+steps with deeper timbre and clearer quality; seed 1 has a muffled sound
+quality with more evenly-timed steps; seed 2 sounds very metallic with
+steps which are evenly-timed but higher in pitch. The seeds therefore
+differ mainly in sound profile. Class, checkpoint and sampler are fixed,
+so these differences come only from the initial noise. Diversity across
+seeds for other classes was not evaluated.</p>
+<figure id="fig:placeholder">
+<img src="./image.png" style="width:50.0%" />
+<figcaption>Mel-spectrogram comparisons of generated Footsteps audio
+with seed 0, 1, and 2.</figcaption>
+</figure>
+<h2 class="unnumbered" id="evidence-of-unique-audio-generation">Evidence
+of unique audio generation</h2>
+<p>To check that the model does not copy training data,
+<code>class_1_seed_0.wav</code> was compared with a training Footstep
+clip, <code>footstep/005.wav</code>. Both share deep step timbre, but
+differ in background noise and step timing.</p>
+<h2 class="unnumbered" id="perceptual-audio-quality">Perceptual audio
+quality</h2>
+<p>Perceptual quality is the weakest criterion. The generated sounds are
+often metallic and buzzy, which is the "fuzziness, distortion and noise"
+that the challenge criteria penalise [1]. Griffin-Lim is the suspected
+cause, since it estimates phase iteratively from magnitudes alone and
+the best DCASE systems used HiFi-GAN for this step [1]; this is a
+hypothesis, because no run replaced Griffin-Lim with a neural vocoder.
+This limitation is worst seen in generating the Sneeze/Cough class,
+where an example can be seen in
+<code>demo_wavs/class_6_seed_0.wav</code>. This distorted sound is
+observed across all classes.</p>
+<h2 class="unnumbered" id="baseline-vs-modification">Baseline vs
+modification</h2>
+<p>Table 1 compares B0
+(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>w</mi><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">w=1</annotation></semantics></math>,
+<code>evidence/baseline_w1/</code>) with M1
+(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>w</mi><mo>=</mo><mn>3</mn></mrow><annotation encoding="application/x-tex">w=3</annotation></semantics></math>,
+<code>demo_wavs/</code> for the same class and seed) over 5 pairs. H1
+(better fit with guidance) was supported; H2 (lower diversity and more
+artefacts) was not supported; H3 (perceptual audio quality) was not
+supported. This agrees with the best guidance scale near 3 reported for
+AudioLDM [10].</p>
+<div id="Table 1">
+<table>
+<caption>Baseline versus modification: mean listening ratings over
+matched class and seed pairs (single unblinded listener).</caption>
+<thead>
+<tr>
+<th style="text-align: left;"><strong>Criterion (1–3)</strong></th>
+<th style="text-align: center;"><strong>B0
+(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>w</mi><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">w=1</annotation></semantics></math>)</strong></th>
+<th style="text-align: center;"><strong>M1
+(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>w</mi><mo>=</mo><mn>3</mn></mrow><annotation encoding="application/x-tex">w=3</annotation></semantics></math>)</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Fit-to-category</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">3</td>
+</tr>
+<tr>
+<td style="text-align: left;">Diversity across seeds</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">2</td>
+</tr>
+<tr>
+<td style="text-align: left;">Perceptual audio quality</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">1</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h2 class="unnumbered" id="failure-cases-and-limitations">Failure cases
+and limitations</h2>
+<p>The main failure is the metallic, buzzy timbre (Section 5.6) observed
+in all files in <code>demo_wavs/</code>. Judgements come from one
+unblinded listener, so ratings are indicative rather than statistically
+meaningful, and no FAD or classifier metric was computed. With 4,365
+training clips the model may overfit, and the copy check covers a single
+clip. Peak-normalisation discards loudness differences, and batch 8 was
+a memory compromise, but previous research have used 16 or 32.</p>
+<h1 class="unnumbered" id="conclusion">Conclusion</h1>
+<p>A complete class-and-seed-to-WAV Foley generator was built: a
+FiLM-conditioned 2-D U-Net on log-mel spectrograms, 50-step DDIM with
+classifier-free guidance and seeded Griffin-Lim, trained in roughly 9–10
+hours on one T4. Listening shows moderate-high fit-to-category and high
+diversity but poor, metallic quality, attributed to Griffin-Lim without
+ablation. Future work should (1) reconstruct waveforms from mel
+spectrograms with a trained vocoder, as DiffWave does for vocoding [9],
+(2) generate in a latent space for class-conditioned generation, which
+AudioLDM shows works well [10], and (3) add objective evaluation with
+FAD, as in the DCASE 2023 challenge [1].</p>
+<h1 class="unnumbered" id="ai-acknowledgment">AI Acknowledgment</h1>
+<p>Claude (Anthropic) planned the method, wrote prompts for the coding
+assistant, guided Colab setup and monitoring, drew Figures 1–2 and gave
+feedback on this report. Microsoft Copilot (agent mode) wrote the code
+from that plan: data handling, model, training, inference, evaluation
+scripts and tests. The student chose the scope and references, performed
+the literature review, adapted the batch size to T4 memory, ran and
+monitored training, reviewed and debugged the code, coded additional
+libraries and scripts for the report, judged all audio, fixed the
+demonstration seeds, and wrote the findings and conclusions.</p>
+<h1 class="unnumbered" id="references">References</h1>
+<p>[1] K. Choi et al., "Foley sound synthesis at the DCASE 2023
+challenge," in Proc. Workshop Detect. Classif. Acoust. Scenes Events
+(DCASE), Tampere, Finland, 2023, doi: 10.48550/arXiv.2304.12521.</p>
+<p>[2] Y. Chung, J. Lee, and J. Nam, "T-Foley: A controllable
+waveform-domain diffusion model for temporal-event-guided Foley sound
+synthesis," in Proc. IEEE Int. Conf. Acoust., Speech, Signal Process.
+(ICASSP), Seoul, South Korea, 2024, pp. 6820–6824, doi:
+10.1109/ICASSP48485.2024.10447380.</p>
+<p>[3] K. Choi, G. Fazekas, M. Sandler, and K. Cho, "A comparison of
+audio signal preprocessing methods for deep neural networks on music
+tagging," in Proc. 26th Eur. Signal Process. Conf. (EUSIPCO), Rome,
+Italy, 2018, pp. 1870–1874, doi: 10.23919/EUSIPCO.2018.8553106.</p>
+<p>[4] O. Ronneberger, P. Fischer, and T. Brox, "U-Net: Convolutional
+networks for biomedical image segmentation," in Proc. Med. Image Comput.
+Comput.-Assist. Intervent. (MICCAI), Munich, Germany, 2015, pp. 234–241,
+doi: 10.1007/978-3-319-24574-4_28.</p>
+<p>[5] E. Perez, F. Strub, H. de Vries, V. Dumoulin, and A. Courville,
+"FiLM: Visual reasoning with a general conditioning layer," in Proc.
+AAAI Conf. Artif. Intell., vol. 32, no. 1, 2018, doi:
+10.1609/aaai.v32i1.11671.</p>
+<p>[6] J. Song, C. Meng, and S. Ermon, "Denoising diffusion implicit
+models," in Proc. Int. Conf. Learn. Represent. (ICLR), 2021.</p>
+<p>[7] J. Ho and T. Salimans, "Classifier-free diffusion guidance," in
+Proc. NeurIPS Workshop Deep Generative Models Downstream Appl.,
+2021.</p>
+<p>[8] D. Griffin and J. Lim, "Signal estimation from modified
+short-time Fourier transform," IEEE Trans. Acoust., Speech, Signal
+Process., vol. 32, no. 2, pp. 236–243, Apr. 1984.</p>
+<p>[9] Z. Kong, W. Ping, J. Huang, K. Zhao, and B. Catanzaro, "DiffWave:
+A versatile diffusion model for audio synthesis," in Proc. Int. Conf.
+Learn. Represent. (ICLR), 2021.</p>
+<p>[10] H. Liu et al., "AudioLDM: Text-to-audio generation with latent
+diffusion models," in Proc. 40th Int. Conf. Mach. Learn. (ICML), vol.
+202, 2023, pp. 21450–21474.</p>
+<p>[11] D. Yang et al., "Diffsound: Discrete diffusion model for
+text-to-sound generation," IEEE/ACM Trans. Audio, Speech, Lang.
+Process., vol. 31, pp. 1720–1733, 2023, doi:
+10.1109/TASLP.2023.3268730.</p>
+<p>[12] B. McFee et al., "librosa: Audio and music signal analysis in
+Python," in Proc. 14th Python Sci. Conf., 2015, pp. 18–25.</p>
+<p>[13] A. Paszke et al., "PyTorch: An imperative style,
+high-performance deep learning library," in Adv. Neural Inf. Process.
+Syst. (NeurIPS), vol. 32, 2019, pp. 8024–8035.</p>
+<p>[14] C. R. Harris et al., "Array programming with NumPy," Nature,
+vol. 585, pp. 357–362, 2020.</p>
+<p>[15] P. Virtanen et al., "SciPy 1.0: Fundamental algorithms for
+scientific computing in Python," *Nature Methods*, vol. 17, pp. 261–272,
+2020.</p>
+<p>[16] F. Pedregosa et al., "Scikit-learn: Machine learning in Python,"
+J. Mach. Learn. Res.*, vol. 12, pp. 2825–2830, 2011.</p>
+<section id="appendix" class="unnumbered sidewaystable">
+<h1 class="unnumbered">Appendix</h1>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;"><strong>Item</strong></th>
+<th style="text-align: left;"><strong>Value</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">U-Net</td>
+<td style="text-align: left;">Base 64 channels, multipliers
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>,</mo><mn>2</mn><mo>,</mo><mn>4</mn><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(1, 2, 4)</annotation></semantics></math>,
+2 blocks per level (encoder), attention at lowest level, 256-d
+conditioning</td>
+</tr>
+<tr>
+<td style="text-align: left;">Diffusion</td>
+<td
+style="text-align: left;"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>=</mo><mn>1000</mn></mrow><annotation encoding="application/x-tex">T=1000</annotation></semantics></math>,
+linear
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>β</mi><annotation encoding="application/x-tex">\beta</annotation></semantics></math>
+from
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mn>10</mn><mrow><mi>−</mi><mn>4</mn></mrow></msup><annotation encoding="application/x-tex">10^{-4}</annotation></semantics></math>
+to
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.02</mn><annotation encoding="application/x-tex">0.02</annotation></semantics></math>,
+noise prediction; class replaced by NULL with probability 0.1</td>
+</tr>
+<tr>
+<td style="text-align: left;">Optimiser</td>
+<td style="text-align: left;">AdamW (weight decay 0), lr
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>2</mn><mo>×</mo><msup><mn>10</mn><mrow><mi>−</mi><mn>4</mn></mrow></msup></mrow><annotation encoding="application/x-tex">2\times10^{-4}</annotation></semantics></math>,
+500 warm-up steps, gradient clip 1.0, EMA decay 0.999, fp16</td>
+</tr>
+<tr>
+<td style="text-align: left;">Batch / steps</td>
+<td style="text-align: left;">8 / 40,000 (about 73 epochs)</td>
+</tr>
+<tr>
+<td style="text-align: left;">Sampling</td>
+<td style="text-align: left;">DDIM 50 steps,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>η</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\eta=0</annotation></semantics></math>;
+guidance
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>w</mi><mo>=</mo><mn>3</mn></mrow><annotation encoding="application/x-tex">w=3</annotation></semantics></math>
+(M1) or
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>w</mi><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">w=1</annotation></semantics></math>
+(B0)</td>
+</tr>
+<tr>
+<td style="text-align: left;">Parameters</td>
+<td style="text-align: left;">16.432 M (about 66 MB in fp32)</td>
+</tr>
+<tr>
+<td style="text-align: left;">Hardware / speed</td>
+<td style="text-align: left;">Colab T4 16 GB; about 0.85 s per step;
+peak memory about 14.3 GB</td>
+</tr>
+<tr>
+<td style="text-align: left;">Training time</td>
+<td style="text-align: left;">About 9–10 h over seven sessions (six
+resumes); from memory</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;"><strong>Class (ID)</strong></th>
+<th style="text-align: left;"><strong>File in
+<code>demo_wavs/</code></strong></th>
+<th style="text-align: center;"><strong>Fit (1–3)</strong></th>
+<th style="text-align: left;"><strong>What matches / what is
+off</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">DogBark (0)</td>
+<td style="text-align: left;"><code>class_0_seed_0.wav</code></td>
+<td style="text-align: center;">3</td>
+<td style="text-align: left;">Matches a dog bark with metallic audio
+quality</td>
+</tr>
+<tr>
+<td style="text-align: left;">Footstep (1)</td>
+<td style="text-align: left;"><code>class_1 _seed_0.wav</code></td>
+<td style="text-align: center;">3</td>
+<td style="text-align: left;">Matches footstep sound, audio quite
+clear</td>
+</tr>
+<tr>
+<td style="text-align: left;">GunShot (2)</td>
+<td style="text-align: left;"><code>class_2_seed_0.wav</code></td>
+<td style="text-align: center;">2</td>
+<td style="text-align: left;">Matches, but buzzy in background</td>
+</tr>
+<tr>
+<td style="text-align: left;">Keyboard (3)</td>
+<td style="text-align: left;"><code>class_3_seed_0.wav</code></td>
+<td style="text-align: center;">3</td>
+<td style="text-align: left;">Matches well, but lots of background
+noise</td>
+</tr>
+<tr>
+<td style="text-align: left;">MovingMotorVehicle (4)</td>
+<td style="text-align: left;"><code>class_4_seed_0.wav</code></td>
+<td style="text-align: center;">2</td>
+<td style="text-align: left;">Moderately matches, muffled sound</td>
+</tr>
+<tr>
+<td style="text-align: left;">Rain (5)</td>
+<td style="text-align: left;"><code>class_5_seed_0.wav</code></td>
+<td style="text-align: center;">2</td>
+<td style="text-align: left;">Moderately matches, muffled sound</td>
+</tr>
+<tr>
+<td style="text-align: left;">Sneeze/Cough (6)</td>
+<td style="text-align: left;"><code>class_6_seed_0.wav</code></td>
+<td style="text-align: center;">1</td>
+<td style="text-align: left;">Barely recognisable, very metallic
+sound</td>
+</tr>
+</tbody>
+</table>
+</section>
+</body>
+</html>
